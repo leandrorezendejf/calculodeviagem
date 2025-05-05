@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Viagem</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f8ff;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        header img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #007bff;
+        }
+
+        label, select, input {
+            display: block;
+            width: 100%;
+            margin-bottom: 20px;
+            font-size: 16px;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        input[type="number"] {
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .result {
+            margin-top: 30px;
+            font-weight: bold;
+            font-size: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            color: #666;
+            background-color: #e6f0ff;
+        }
+
+        .data-hora {
+            text-align: center;
+            font-size: 16px;
+            margin-top: 15px;
+            color: #555;
+        }
+
+        .icon {
+            margin-right: 8px;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <img src="https://leandrorezendejf.github.io/calculodeviagem/cabecalho.jpg" alt="Cabeçalho">
+    </header>
+
+    <div class="container">
+        <h2><i class="fas fa-car icon"></i>Calculadora de Viagem</h2>
+
+        <label for="origem"><i class="fas fa-map-marker-alt icon"></i>Cidade de Origem</label>
+        <input type="text" id="origem" placeholder="Ex: São Paulo, SP">
+
+        <label for="destino"><i class="fas fa-location-dot icon"></i>Cidade de Destino</label>
+        <input type="text" id="destino" placeholder="Ex: Rio de Janeiro, RJ">
+
+        <label for="consumo"><i class="fas fa-gas-pump icon"></i>Consumo do carro (km por litro)</label>
+        <input type="number" id="consumo" placeholder="Ex: 10">
+
+        <label for="preco"><i class="fas fa-money-bill-wave icon"></i>Preço da gasolina (R$)</label>
+        <input type="number" id="preco" step="0.01" placeholder="Ex: 5.79">
+
+        <button onclick="calcularViagem()"><i class="fas fa-calculator icon"></i>Calcular</button>
+
+        <div class="result" id="resultado"></div>
+        <div class="data-hora" id="dataHora"></div>
+    </div>
+
+    <div class="footer">
+        Criado por Leandro Rezende
+    </div>
+
+    <script>
+        async function calcularViagem() {
+            const origem = document.getElementById("origem").value;
+            const destino = document.getElementById("destino").value;
+            const consumo = parseFloat(document.getElementById("consumo").value);
+            const preco = parseFloat(document.getElementById("preco").value);
+
+            if (!origem || !destino || isNaN(consumo) || isNaN(preco)) {
+                alert("Preencha todos os campos corretamente.");
+                return;
+            }
+
+            const apiKey = "5b3ce3597851110001cf62482c74deb46b9b49f4b336b1a45e4ff0fa";
+
+            try {
+                const getCoord = async (local) => {
+                    const res = await fetch(`https://api.openrouteservice.org/geocode/search?api_key=${apiKey}&text=${encodeURIComponent(local)}`);
+                    const data = await res.json();
+                    return data.features[0].geometry.coordinates;
+                }
+
+                const coordOrigem = await getCoord(origem);
+                const coordDestino = await getCoord(destino);
+
+                const url = "https://api.openrouteservice.org/v2/directions/driving-car?api_key=" + apiKey;
+
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        coordinates: [coordOrigem, coordDestino]
+                    })
+                });
+
+                const data = await response.json();
+                const distanciaMetros = data.routes[0].summary.distance;
+                const distanciaKm = distanciaMetros / 1000;
+                const gastoIda = (distanciaKm / consumo) * preco;
+                const gastoTotal = gastoIda * 2;
+
+                document.getElementById("resultado").innerHTML = `
+                    Distância: ${distanciaKm.toFixed(2)} km<br>
+                    Gasto com gasolina (ida): R$ ${gastoIda.toFixed(2)}<br>
+                    Gasto com gasolina (volta): R$ ${gastoIda.toFixed(2)}<br>
+                    <strong>Total: R$ ${gastoTotal.toFixed(2)}</strong>
+                `;
+            } catch (error) {
+                console.error(error);
+                alert("Erro ao calcular a distância. Verifique os nomes das cidades.");
+            }
+        }
+
+        function atualizarDataHora() {
+            const agora = new Date();
+            const dataFormatada = agora.toLocaleDateString('pt-BR');
+            const horaFormatada = agora.toLocaleTimeString('pt-BR');
+            document.getElementById("dataHora").textContent = `📅 ${dataFormatada} ⏰ ${horaFormatada}`;
+        }
+
+        setInterval(atualizarDataHora, 1000);
+        atualizarDataHora();
+    </script>
+</body>
+</html>
